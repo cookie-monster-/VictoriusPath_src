@@ -9,7 +9,7 @@ import com.ctre.phoenix.motorcontrol.can.*;
  * Creates CANTalon objects and configures all the parameters we care about to factory defaults. Closed-loop and sensor
  * parameters are not set, as these are expected to be set by the application.
  */
-public class CANTalonFactory {
+public class CANTalonFactory2018 {
 
     public static class Configuration {
         public boolean LIMIT_SWITCH_NORMALLY_OPEN = true;
@@ -35,6 +35,7 @@ public class CANTalonFactory {
         public int QUAD_ENCODER_STATUS_FRAME_RATE_MS = 100;
         public int ANALOG_TEMP_VBAT_STATUS_FRAME_RATE_MS = 100;
         public int PULSE_WIDTH_STATUS_FRAME_RATE_MS = 100;
+        public int VOLTAGE_COMPENSATION_TIMEOUT_MS = 10;
 
 //       public WPI_TalonSRX.VelocityMeasurementPeriod VELOCITY_MEASUREMENT_PERIOD = WPI_TalonSRX.VelocityMeasurementPeriod.Period_100Ms;
         public int VELOCITY_MEASUREMENT_ROLLING_AVERAGE_WINDOW = 64;
@@ -68,10 +69,12 @@ public class CANTalonFactory {
     }
 
     public static WPI_TalonSRX createTalon(int id, Configuration config) {
-        WPI_TalonSRX talon = new LazyCANTalon(id, config.CONTROL_FRAME_PERIOD_MS);
-        talon.changeControlMode(CANTalon.TalonControlMode.Voltage);
+        WPI_TalonSRX talon = new WPI_TalonSRX(id);
+        //talon.changeControlMode(CANTalon.TalonControlMode.Voltage);
+        talon.enableVoltageCompensation(true);
+        talon.configVoltageCompSaturation(config.MAX_OUTPUT_VOLTAGE, config.VOLTAGE_COMPENSATION_TIMEOUT_MS);
         talon.changeMotionControlFramePeriod(config.MOTION_CONTROL_FRAME_PERIOD_MS);
-        talon.clearIAccum();
+        talon.setIntegralAccumulator(0,0,10);
         talon.ClearIaccum();
         talon.clearMotionProfileHasUnderrun();
         talon.clearMotionProfileTrajectories();
