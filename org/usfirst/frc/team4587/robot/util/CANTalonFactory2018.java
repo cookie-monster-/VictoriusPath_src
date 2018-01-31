@@ -3,6 +3,8 @@ package org.usfirst.frc.team4587.robot.util;
 
 import edu.wpi.first.wpilibj.MotorSafety;
 
+import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.StatusFrame;
 import com.ctre.phoenix.motorcontrol.can.*;
 
 /**
@@ -12,17 +14,23 @@ import com.ctre.phoenix.motorcontrol.can.*;
 public class CANTalonFactory2018 {
 
     public static class Configuration {
+    	public boolean INVERT_MOTOR = false;
+    	public boolean INVERT_SENSOR = false;
+    	
         public boolean LIMIT_SWITCH_NORMALLY_OPEN = true;
         public double MAX_OUTPUT_VOLTAGE = 12;
         public double NOMINAL_VOLTAGE = 0;
         public double PEAK_VOLTAGE = 12;
+        public double PEAK_OUTPUT = 1;
+        public double MAX_OUTPUT = 1;
+        public double NOMINAL_OUTPUT = 0;//??????
         public boolean ENABLE_BRAKE = false;
         public boolean ENABLE_CURRENT_LIMIT = false;
         public boolean ENABLE_SOFT_LIMIT = false;
         public boolean ENABLE_LIMIT_SWITCH = false;
         public int CURRENT_LIMIT = 0;
         public double EXPIRATION_TIMEOUT_SECONDS = MotorSafety.DEFAULT_SAFETY_EXPIRATION;
-        public double FORWARD_SOFT_LIMIT = 0;
+        public int FORWARD_SOFT_LIMIT = 0;
         public boolean INVERTED = false;
         public double NOMINAL_CLOSED_LOOP_VOLTAGE = 12;
         public double REVERSE_SOFT_LIMIT = 0;
@@ -36,12 +44,16 @@ public class CANTalonFactory2018 {
         public int ANALOG_TEMP_VBAT_STATUS_FRAME_RATE_MS = 100;
         public int PULSE_WIDTH_STATUS_FRAME_RATE_MS = 100;
         public int VOLTAGE_COMPENSATION_TIMEOUT_MS = 10;
+        public int STANDARD_TIMEOUT_MS = 10;
 
-//       public WPI_TalonSRX.VelocityMeasurementPeriod VELOCITY_MEASUREMENT_PERIOD = WPI_TalonSRX.VelocityMeasurementPeriod.Period_100Ms;
+        //public VelocityMeasurementPeriod VELOCITY_MEASUREMENT_PERIOD = VelocityMeasurementPeriod.Period_100Ms;
         public int VELOCITY_MEASUREMENT_ROLLING_AVERAGE_WINDOW = 64;
 
         public double VOLTAGE_COMPENSATION_RAMP_RATE = 0;
         public double VOLTAGE_RAMP_RATE = 0;
+        
+/*?*/        public double OPEN_LOOP_RAMP_RATE = 0;
+/*?*/        public double CLOSED_LOOP_RAMP_RATE = 0;
     }
 
     private static final Configuration kDefaultConfiguration = new Configuration();
@@ -70,52 +82,60 @@ public class CANTalonFactory2018 {
 
     public static WPI_TalonSRX createTalon(int id, Configuration config) {
         WPI_TalonSRX talon = new WPI_TalonSRX(id);
-        //talon.changeControlMode(CANTalon.TalonControlMode.Voltage);
         talon.enableVoltageCompensation(true);
         talon.configVoltageCompSaturation(config.MAX_OUTPUT_VOLTAGE, config.VOLTAGE_COMPENSATION_TIMEOUT_MS);
         talon.changeMotionControlFramePeriod(config.MOTION_CONTROL_FRAME_PERIOD_MS);
-        talon.setIntegralAccumulator(0,0,10);
-        talon.ClearIaccum();
-        talon.clearMotionProfileHasUnderrun();
+        talon.setIntegralAccumulator(0,0,config.STANDARD_TIMEOUT_MS);
+        talon.clearMotionProfileHasUnderrun(config.STANDARD_TIMEOUT_MS);
         talon.clearMotionProfileTrajectories();
-        talon.clearStickyFaults();
+        talon.clearStickyFaults(10);
+        /*
+ //?        * shouldn't need this because 254 was just setting to 0, and now it forces us to actually set a sensor source
         talon.ConfigFwdLimitSwitchNormallyOpen(config.LIMIT_SWITCH_NORMALLY_OPEN);
-        talon.configMaxOutputVoltage(config.MAX_OUTPUT_VOLTAGE);
-        talon.configNominalOutputVoltage(config.NOMINAL_VOLTAGE, -config.NOMINAL_VOLTAGE);
-        talon.configPeakOutputVoltage(config.PEAK_VOLTAGE, -config.PEAK_VOLTAGE);
+        talon.configForwardLimitSwitchSource();
+        */
+        talon.configPeakOutputForward(config.PEAK_OUTPUT,config.STANDARD_TIMEOUT_MS);
+        talon.configPeakOutputReverse(-config.PEAK_OUTPUT,config.STANDARD_TIMEOUT_MS);
+        
+ //?       //next two NOMINAL_OUTPUT could be 0 or 1, not sure
+        talon.configNominalOutputForward(config.NOMINAL_OUTPUT, config.STANDARD_TIMEOUT_MS);
+        talon.configNominalOutputReverse(-config.NOMINAL_OUTPUT, config.STANDARD_TIMEOUT_MS);
+        /*
+ //?        * shouldn't need this because 254 was just setting to 0, and now it forces us to actually set a sensor source
         talon.ConfigRevLimitSwitchNormallyOpen(config.LIMIT_SWITCH_NORMALLY_OPEN);
-        talon.enableBrakeMode(config.ENABLE_BRAKE);
-        talon.EnableCurrentLimit(config.ENABLE_CURRENT_LIMIT);
-        talon.enableForwardSoftLimit(config.ENABLE_SOFT_LIMIT);
-        talon.enableLimitSwitch(config.ENABLE_LIMIT_SWITCH, config.ENABLE_LIMIT_SWITCH);
-        talon.enableReverseSoftLimit(config.ENABLE_SOFT_LIMIT);
-        talon.enableZeroSensorPositionOnForwardLimit(false);
-        talon.enableZeroSensorPositionOnIndex(false, false);
-        talon.enableZeroSensorPositionOnReverseLimit(false);
-        talon.reverseOutput(false);
-        talon.reverseSensor(false);
-        talon.setAnalogPosition(0);
-        talon.setCurrentLimit(config.CURRENT_LIMIT);
+        talon.configReverseLimitSwitchSource();
+        */
+        talon.setNeutralMode(NeutralMode.Brake);
+        talon.enableCurrentLimit(config.ENABLE_CURRENT_LIMIT);
+        talon.configForwardSoftLimitEnable(config.ENABLE_SOFT_LIMIT,config.STANDARD_TIMEOUT_MS);
+        talon.overrideLimitSwitchesEnable(config.ENABLE_LIMIT_SWITCH);
+        talon.configReverseSoftLimitEnable(config.ENABLE_SOFT_LIMIT,config.STANDARD_TIMEOUT_MS);
+        /*
+ //?       talon.enableZeroSensorPositionOnForwardLimit(false);
+ //?       talon.enableZeroSensorPositionOnIndex(false, false);
+ //?       talon.enableZeroSensorPositionOnReverseLimit(false);
+        */
+        talon.setInverted(config.INVERT_MOTOR);
+        talon.setSensorPhase(config.INVERT_SENSOR);
+        talon.getSensorCollection().setAnalogPosition(0,config.STANDARD_TIMEOUT_MS);
+        talon.configContinuousCurrentLimit(config.CURRENT_LIMIT,config.STANDARD_TIMEOUT_MS);
         talon.setExpiration(config.EXPIRATION_TIMEOUT_SECONDS);
-        talon.setForwardSoftLimit(config.FORWARD_SOFT_LIMIT);
-        talon.setInverted(config.INVERTED);
-        talon.setNominalClosedLoopVoltage(config.NOMINAL_CLOSED_LOOP_VOLTAGE);
-        talon.setPosition(0);
-        talon.setProfile(0);
-        talon.setPulseWidthPosition(0);
-        talon.setReverseSoftLimit(config.REVERSE_SOFT_LIMIT);
+        talon.configForwardSoftLimitThreshold(config.FORWARD_SOFT_LIMIT, config.STANDARD_TIMEOUT_MS);
+        talon.setSelectedSensorPosition(0,0,config.STANDARD_TIMEOUT_MS);
+        talon.selectProfileSlot(0,0);
+        talon.getSensorCollection().setPulseWidthPosition(0,config.STANDARD_TIMEOUT_MS);
         talon.setSafetyEnabled(config.SAFETY_ENABLED);
-        talon.SetVelocityMeasurementPeriod(config.VELOCITY_MEASUREMENT_PERIOD);
-        talon.SetVelocityMeasurementWindow(config.VELOCITY_MEASUREMENT_ROLLING_AVERAGE_WINDOW);
-        talon.setVoltageCompensationRampRate(config.VOLTAGE_COMPENSATION_RAMP_RATE);
-        talon.setVoltageRampRate(config.VOLTAGE_RAMP_RATE);
+   //?     //talon.configVelocityMeasurementPeriod();
+        talon.configVelocityMeasurementWindow(config.VELOCITY_MEASUREMENT_ROLLING_AVERAGE_WINDOW,config.STANDARD_TIMEOUT_MS);
+        talon.configOpenloopRamp(config.OPEN_LOOP_RAMP_RATE, config.STANDARD_TIMEOUT_MS);
+        talon.configClosedloopRamp(config.CLOSED_LOOP_RAMP_RATE, config.STANDARD_TIMEOUT_MS);
 
-        talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.General, config.GENERAL_STATUS_FRAME_RATE_MS);
-        talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.Feedback, config.FEEDBACK_STATUS_FRAME_RATE_MS);
-        talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.QuadEncoder, config.QUAD_ENCODER_STATUS_FRAME_RATE_MS);
-        talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.AnalogTempVbat,
-                config.ANALOG_TEMP_VBAT_STATUS_FRAME_RATE_MS);
-        talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.PulseWidth, config.PULSE_WIDTH_STATUS_FRAME_RATE_MS);
+        talon.setStatusFramePeriod(StatusFrame.Status_1_General, config.GENERAL_STATUS_FRAME_RATE_MS, config.STANDARD_TIMEOUT_MS);
+        talon.setStatusFramePeriod(StatusFrame.Status_2_Feedback0, config.FEEDBACK_STATUS_FRAME_RATE_MS,config.STANDARD_TIMEOUT_MS);
+   //?     talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.QuadEncoder, config.QUAD_ENCODER_STATUS_FRAME_RATE_MS);
+        talon.setStatusFramePeriod(StatusFrame.Status_4_AinTempVbat, config.ANALOG_TEMP_VBAT_STATUS_FRAME_RATE_MS,config.STANDARD_TIMEOUT_MS);
+                
+   //?     talon.setStatusFrameRateMs(CANTalon.StatusFrameRate.PulseWidth, config.PULSE_WIDTH_STATUS_FRAME_RATE_MS);
 
         return talon;
     }
@@ -123,7 +143,7 @@ public class CANTalonFactory2018 {
     /**
      * Run this on a fresh talon to produce good values for the defaults.
      */
-    public static String getFullTalonInfo(CANTalon talon) {
+    public static String getFullTalonInfo(WPI_TalonSRX talon) {
         StringBuilder sb = new StringBuilder().append("isRevLimitSwitchClosed = ")
                 .append(talon.isRevLimitSwitchClosed()).append("\n").append("getBusVoltage = ")
                 .append(talon.getBusVoltage()).append("\n").append("isForwardSoftLimitEnabled = ")
