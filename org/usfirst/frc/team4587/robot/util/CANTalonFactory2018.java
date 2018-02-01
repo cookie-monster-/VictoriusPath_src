@@ -75,7 +75,7 @@ public class CANTalonFactory2018 {
     }
 
     public static WPI_VictorSPX createPermanentSlaveTalon(int id, WPI_TalonSRX master) {
-        final WPI_VictorSPX victor = createTalon(id, kSlaveConfiguration);
+        final WPI_VictorSPX victor = null;// createTalon(id, kSlaveConfiguration);
         victor.follow(master);
         return victor;
     }
@@ -143,6 +143,7 @@ public class CANTalonFactory2018 {
     /**
      * Run this on a fresh talon to produce good values for the defaults.
      */
+    /*
     public static String getFullTalonInfo(WPI_TalonSRX talon) {
         StringBuilder sb = new StringBuilder().append("isRevLimitSwitchClosed = ")
                 .append(talon.isRevLimitSwitchClosed()).append("\n").append("getBusVoltage = ")
@@ -224,5 +225,5 @@ public class CANTalonFactory2018 {
 
         return sb.toString();
     }
-    
+    */
 }

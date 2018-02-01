@@ -24,7 +24,7 @@ public class OI {
 	
 	public double getTurn()
 	{
-		return stick1.getRawAxis(4);
+		return -1 * stick1.getRawAxis(4);
 	}
 	
 	public static OI getInstance()

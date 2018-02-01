@@ -141,6 +141,7 @@ public class Drive extends Subsystem {
         // Start all Talons in open loop mode.
         mLeftMaster = new WPI_TalonSRX(1);
         mLeftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
+        mLeftMaster.setSensorPhase(true);
 /*        mLeftMaster.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
         mLeftMaster.setFeedbackDevice(CANTalon.FeedbackDevice.CtreMagEncoder_Relative);
         mLeftMaster.reverseSensor(true);
@@ -270,8 +271,8 @@ public class Drive extends Subsystem {
                 SmartDashboard.putNumber("drive ATE", 0.0);
             }
         }
-        SmartDashboard.putNumber("left position (rotations)", mLeftMaster.getSelectedSensorPosition(0));
-        SmartDashboard.putNumber("right position (rotations)", mRightMaster.getSelectedSensorPosition(0));
+        SmartDashboard.putNumber("left position (rotations)", mLeftMaster.getSelectedSensorPosition(0)/4096);
+        SmartDashboard.putNumber("right position (rotations)", mRightMaster.getSelectedSensorPosition(0)/4096);
 //        SmartDashboard.putNumber("gyro vel", getGyroVelocityDegreesPerSec());
         SmartDashboard.putNumber("gyro pos", getGyroAngle().getDegrees());
     }

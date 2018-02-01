@@ -10,7 +10,7 @@ import com.ctre.phoenix.motorcontrol.can.*;
  * parameters are not set, as these are expected to be set by the application.
  */
 public class CANTalonFactory {
-
+/*
     public static class Configuration {
         public boolean LIMIT_SWITCH_NORMALLY_OPEN = true;
         public double MAX_OUTPUT_VOLTAGE = 12;
@@ -120,6 +120,7 @@ public class CANTalonFactory {
     /**
      * Run this on a fresh talon to produce good values for the defaults.
      */
+	/*
     public static String getFullTalonInfo(CANTalon talon) {
         StringBuilder sb = new StringBuilder().append("isRevLimitSwitchClosed = ")
                 .append(talon.isRevLimitSwitchClosed()).append("\n").append("getBusVoltage = ")
@@ -201,5 +202,5 @@ public class CANTalonFactory {
 
         return sb.toString();
     }
-    
+ */   
 }
