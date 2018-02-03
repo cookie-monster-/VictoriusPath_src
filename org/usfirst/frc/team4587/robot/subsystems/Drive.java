@@ -7,6 +7,11 @@ import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import com.ctre.phoenix.motion.MotionProfileStatus;
+import com.ctre.phoenix.motion.SetValueMotionProfile;
+import com.ctre.phoenix.motion.TrajectoryPoint;
+import com.ctre.phoenix.motion.TrajectoryPoint.TrajectoryDuration;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.StatusFrameEnhanced;
@@ -96,10 +101,19 @@ public class Drive extends Subsystem {
 
     // Hardware states
     private boolean mIsBrakeMode;
+    private boolean mStartingPath = false;
+
+    private MotionProfileStatus mLeftStatus = new MotionProfileStatus();
+    private MotionProfileStatus mRightStatus = new MotionProfileStatus();
 
     // Logging
     private final ReflectingCSVWriter<PathFollower.DebugOutput> mCSVWriter;
-
+    public void startPath() {
+    	synchronized (Drive.this) {
+    		mDriveControlState = DriveControlState.PATH_FOLLOWING;
+    		mStartingPath = true ;
+    	}
+    }
     private final Loop mLoop = new Loop() {
         @Override
         public void onStart(double timestamp) {
@@ -118,10 +132,11 @@ public class Drive extends Subsystem {
                 	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
                     return;
                 case PATH_FOLLOWING:
-                    if (mPathFollower != null) {
-                        updatePathFollower(timestamp);
-                        mCSVWriter.add(mPathFollower.getDebug());
-                    }
+                	doPathFollowing();
+                   // if (mPathFollower != null) {
+                   //     updatePathFollower(timestamp);
+                   //     mCSVWriter.add(mPathFollower.getDebug());
+                //    }
                     return;
                 default:
                     System.out.println("Unexpected drive control state: " + mDriveControlState);
@@ -136,12 +151,77 @@ public class Drive extends Subsystem {
             mCSVWriter.flush();
         }
     };
+    
+    private TrajectoryDuration GetTrajectoryDuration(int durationMs)
+	{	 
+		/* create return value */
+		TrajectoryDuration retval = TrajectoryDuration.Trajectory_Duration_0ms;
+		/* convert duration to supported type */
+		retval = retval.valueOf(durationMs);
+		/* check that it is valid */
+		if (retval.value != durationMs) {
+			DriverStation.reportError("Trajectory Duration not supported - use configMotionProfileTrajectoryPeriod instead", false);		
+		}
+		/* pass to caller */
+		return retval;
+	}
+    
+    private void doPathFollowing () {
+    	if (mStartingPath) {
+    		mStartingPath = false;
+    		mLeftMaster.clearMotionProfileTrajectories();
+    		mRightMaster.clearMotionProfileTrajectories();
+    		// mLeftMaster.configMotionProfileTrajectoryPeriod(0, 10);
+    		TrajectoryPoint point = new TrajectoryPoint();
+
+    		for (int i = 0; i < 100; ++i) {
+    			/* for each point, fill our structure and pass it to API */
+    			point.position = i*.05*4096;
+    			point.velocity = 300 * 4096 / 600.0; //Convert RPM to Units/100ms
+    			point.headingDeg = 0; /* future feature - not used in this example*/
+    			point.profileSlotSelect0 = 0; /* which set of gains would you like to use [0,3]? */
+    			point.profileSlotSelect1 = 0; /* future feature  - not used in this example - cascaded PID [0,1], leave zero */
+    			point.timeDur = GetTrajectoryDuration(10);
+    			point.zeroPos = false;
+    			if (i == 0)
+    				point.zeroPos = true; /* set this to true on the first point */
+
+    			point.isLastPoint = false;
+    			if ((i + 1) == 100)
+    				point.isLastPoint = true; /* set this to true on the last point  */
+
+    			mLeftMaster.pushMotionProfileTrajectory(point);
+    			mRightMaster.pushMotionProfileTrajectory(point);
+    		}
+    		
+    		
+    	}
+    	mLeftMaster.getMotionProfileStatus(mLeftStatus);
+    	mRightMaster.getMotionProfileStatus(mRightStatus);
+    	
+    	if(mLeftStatus.btmBufferCnt < 5 || mRightStatus.btmBufferCnt < 5){
+    		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
+    		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
+    	}else{
+    		if(mLeftStatus.activePointValid && mLeftStatus.isLast){
+        		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Hold.value);
+    		}else{
+        		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
+    		}
+    		if(mRightStatus.activePointValid && mRightStatus.isLast){
+        		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Hold.value);
+    		}else{
+        		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
+    		}
+    	}
+    }
 
     private Drive() {
         // Start all Talons in open loop mode.
         mLeftMaster = new WPI_TalonSRX(1);
         mLeftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mLeftMaster.setSensorPhase(true);
+        mLeftMaster.changeMotionControlFramePeriod(5);
 /*        mLeftMaster.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
         mLeftMaster.setFeedbackDevice(CANTalon.FeedbackDevice.CtreMagEncoder_Relative);
         mLeftMaster.reverseSensor(true);
@@ -163,6 +243,7 @@ public class Drive extends Subsystem {
         
         mRightMaster = new WPI_TalonSRX(2);
         mRightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
+        mRightMaster.changeMotionControlFramePeriod(5);
 /*        mRightMaster.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
         mRightMaster.reverseSensor(false);
         mRightMaster.reverseOutput(true);
