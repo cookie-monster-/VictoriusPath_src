@@ -2,6 +2,7 @@ package org.usfirst.frc.team4587.robot.subsystems;
 
 import com.ctre.phoenix.motorcontrol.can.*;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Timer;
@@ -84,7 +85,7 @@ public class Drive extends Subsystem {
     }
 
     // Control states
-    private DriveControlState mDriveControlState;
+    private DriveControlState mDriveControlState = DriveControlState.OPEN_LOOP;
 
     // Hardware
     private final WPI_TalonSRX mLeftMaster, mRightMaster;
@@ -102,6 +103,7 @@ public class Drive extends Subsystem {
     // Hardware states
     private boolean mIsBrakeMode;
     private boolean mStartingPath = false;
+    private boolean mBufferOk = false;
 
     private MotionProfileStatus mLeftStatus = new MotionProfileStatus();
     private MotionProfileStatus mRightStatus = new MotionProfileStatus();
@@ -109,15 +111,18 @@ public class Drive extends Subsystem {
     // Logging
     private final ReflectingCSVWriter<PathFollower.DebugOutput> mCSVWriter;
     public void startPath() {
+    	System.out.println("in startPath");
     	synchronized (Drive.this) {
     		mDriveControlState = DriveControlState.PATH_FOLLOWING;
     		mStartingPath = true ;
     	}
     }
+    int iCall = 0;
     private final Loop mLoop = new Loop() {
         @Override
         public void onStart(double timestamp) {
             synchronized (Drive.this) {
+            	
                 setOpenLoop(DriveSignal.NEUTRAL);
                 setBrakeMode(false);
                 mNavXBoard.reset();
@@ -126,10 +131,14 @@ public class Drive extends Subsystem {
 
         @Override
         public void onLoop(double timestamp) {
+        	iCall++;
+        	if(iCall % 1000 == 0){
+        		System.out.println("onLoop " + iCall + " " + mDriveControlState + " " + mLeftMaster.getControlMode());
+        	}
             synchronized (Drive.this) {
                 switch (mDriveControlState) {
                 case OPEN_LOOP:
-                	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
+  //              	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
                     return;
                 case PATH_FOLLOWING:
                 	doPathFollowing();
@@ -166,18 +175,40 @@ public class Drive extends Subsystem {
 		return retval;
 	}
     
+	class PeriodicRunnable implements java.lang.Runnable {
+	    public void run() { 
+	    	mLeftMaster.processMotionProfileBuffer();
+	    	mRightMaster.processMotionProfileBuffer();
+	    }
+	}
+	Notifier _notifier = null;
+	
+
     private void doPathFollowing () {
+    	if(iCall % 1000 == 0){
+    		System.out.println("doPathFollowing " + iCall); 
+    	}
     	if (mStartingPath) {
     		mStartingPath = false;
+    		mBufferOk = false;
+    		mLeftMaster.clearMotionProfileHasUnderrun(0);
+    		mRightMaster.clearMotionProfileHasUnderrun(0);
     		mLeftMaster.clearMotionProfileTrajectories();
     		mRightMaster.clearMotionProfileTrajectories();
-    		// mLeftMaster.configMotionProfileTrajectoryPeriod(0, 10);
+    		mLeftMaster.configMotionProfileTrajectoryPeriod(0, 10);
+    		mRightMaster.configMotionProfileTrajectoryPeriod(0,10);
+    		mLeftMaster.setSelectedSensorPosition(0,0,10);
+    		mRightMaster.setSelectedSensorPosition(0,0,10);
     		TrajectoryPoint point = new TrajectoryPoint();
-
+    		
+    		double vel = 300.0;
     		for (int i = 0; i < 100; ++i) {
+    			if(i > 90){
+    				vel = 300 - (30 * (i-90));
+    			}
     			/* for each point, fill our structure and pass it to API */
     			point.position = i*.05*4096;
-    			point.velocity = 300 * 4096 / 600.0; //Convert RPM to Units/100ms
+    			point.velocity = vel * 4096 / 600.0; //Convert RPM to Units/100ms
     			point.headingDeg = 0; /* future feature - not used in this example*/
     			point.profileSlotSelect0 = 0; /* which set of gains would you like to use [0,3]? */
     			point.profileSlotSelect1 = 0; /* future feature  - not used in this example - cascaded PID [0,1], leave zero */
@@ -187,31 +218,57 @@ public class Drive extends Subsystem {
     				point.zeroPos = true; /* set this to true on the first point */
 
     			point.isLastPoint = false;
-    			if ((i + 1) == 100)
+    			
+    			if ((i + 1) == 100){
     				point.isLastPoint = true; /* set this to true on the last point  */
-
-    			mLeftMaster.pushMotionProfileTrajectory(point);
+    				point.velocity = 0;
+    			}
     			mRightMaster.pushMotionProfileTrajectory(point);
+    			point.position = -1 * point.position;
+    			point.velocity = -1 * point.velocity;
+    			
+    			mLeftMaster.pushMotionProfileTrajectory(point);
     		}
-    		
-    		
     	}
     	mLeftMaster.getMotionProfileStatus(mLeftStatus);
     	mRightMaster.getMotionProfileStatus(mRightStatus);
     	
-    	if(mLeftStatus.btmBufferCnt < 5 || mRightStatus.btmBufferCnt < 5){
+    	if((mBufferOk == false) &&  (mLeftStatus.btmBufferCnt < 5 || mRightStatus.btmBufferCnt < 5)){
     		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
     		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
+        	if(iCall % 1000 == 0){
+        		System.out.println("disabled");
+        	}
     	}else{
+    		mBufferOk = true;
+    		int leftPos = mLeftMaster.getActiveTrajectoryPosition();
+    		int rightPos = mRightMaster.getActiveTrajectoryPosition();
+    		int leftEnc = mLeftMaster.getSelectedSensorPosition(0);
+    		int rightEnc = mRightMaster.getSelectedSensorPosition(0);
+    		
     		if(mLeftStatus.activePointValid && mLeftStatus.isLast){
         		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Hold.value);
+            	if(iCall % 1000 == 0){
+            		System.out.println("hold" + "L: " + leftPos + " " + leftEnc);
+            		
+            	}
     		}else{
         		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
+            	if(iCall % 10 == 0){
+            		System.out.println("enabled" + "L: " + leftPos + " " + leftEnc);
+            	}
     		}
     		if(mRightStatus.activePointValid && mRightStatus.isLast){
         		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Hold.value);
+            	if(iCall % 1000 == 0){
+            		System.out.println("hold" + "R: " + rightPos + " " + rightEnc);
+            	}
     		}else{
         		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
+            	if(iCall % 10 == 0){
+            		System.out.println("enable" + "R: " + rightPos + " " + rightEnc);
+            		
+            	}
     		}
     	}
     }
@@ -220,8 +277,24 @@ public class Drive extends Subsystem {
         // Start all Talons in open loop mode.
         mLeftMaster = new WPI_TalonSRX(1);
         mLeftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
-        mLeftMaster.setSensorPhase(true);
+        mLeftMaster.setSensorPhase(false);
         mLeftMaster.changeMotionControlFramePeriod(5);
+        
+		mLeftMaster.configNeutralDeadband(0.01, 10);
+
+		mLeftMaster.config_kF(0, 0.0001, 10);
+		mLeftMaster.config_kP(0, 0.25 , 10);
+		mLeftMaster.config_kI(0, 0.0, 10);
+		mLeftMaster.config_kD(0, 20.0, 10);
+
+		/* Our profile uses 10ms timing */
+		mLeftMaster.configMotionProfileTrajectoryPeriod(10, 10); 
+		/*
+		 * status 10 provides the trajectory target for motion profile AND
+		 * motion magic
+		 */
+		mLeftMaster.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic, 10, 10);
+        
 /*        mLeftMaster.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
         mLeftMaster.setFeedbackDevice(CANTalon.FeedbackDevice.CtreMagEncoder_Relative);
         mLeftMaster.reverseSensor(true);
@@ -244,6 +317,22 @@ public class Drive extends Subsystem {
         mRightMaster = new WPI_TalonSRX(2);
         mRightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mRightMaster.changeMotionControlFramePeriod(5);
+        
+		mRightMaster.configNeutralDeadband(0.01, 10);
+
+		mRightMaster.config_kF(0, 0.0001, 10);
+		mRightMaster.config_kP(0, 0.25, 10);
+		mRightMaster.config_kI(0, 0.0, 10);
+		mRightMaster.config_kD(0, 20.0, 10);
+
+		/* Our profile uses 10ms timing */
+		mRightMaster.configMotionProfileTrajectoryPeriod(10, 10); 
+		/*
+		 * status 10 provides the trajectory target for motion profile AND
+		 * motion magic
+		 */
+		mRightMaster.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic, 10, 10);
+      
 /*        mRightMaster.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
         mRightMaster.reverseSensor(false);
         mRightMaster.reverseOutput(true);
@@ -282,9 +371,12 @@ public class Drive extends Subsystem {
         mCSVWriter = new ReflectingCSVWriter<PathFollower.DebugOutput>("/home/lvuser/PATH-FOLLOWER-LOGS.csv",
                 PathFollower.DebugOutput.class);
         
-        _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
+ //     _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
+    	_notifier = new Notifier(new PeriodicRunnable());
+        _notifier.startPeriodic(0.005);
+        
+        
     }
-
     @Override
     public void registerEnabledLoops(Looper in) {
         in.register(mLoop);
