@@ -24,7 +24,7 @@ public class OI {
 	
 	public double getTurn()
 	{
-		return -1 * stick1.getRawAxis(4);
+		return stick1.getRawAxis(4);
 	}
 	
 	public static OI getInstance()
@@ -38,6 +38,6 @@ public class OI {
 	
 	public double getDrive()
 	{
-		return stick1.getRawAxis(1);
+		return -1 * stick1.getRawAxis(1);
 	}
 }

@@ -21,6 +21,7 @@ import com.ctre.phoenix.motorcontrol.NeutralMode;
 import org.usfirst.frc.team4587.robot.util.Gyro;
 import org.usfirst.frc.team4587.robot.Constants;
 import org.usfirst.frc.team4587.robot.OI;
+import org.usfirst.frc.team4587.robot.RobotMap;
 //import com.team254.frc2017.Kinematics;
 //import com.team254.frc2017.RobotState;
 //import com.team254.frc2017.ShooterAimingParameters;
@@ -119,6 +120,7 @@ public class Drive extends Subsystem {
     }
     int iCall = 0;
     private final Loop mLoop = new Loop() {
+
         @Override
         public void onStart(double timestamp) {
             synchronized (Drive.this) {
@@ -138,7 +140,7 @@ public class Drive extends Subsystem {
             synchronized (Drive.this) {
                 switch (mDriveControlState) {
                 case OPEN_LOOP:
-  //              	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
+                	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
                     return;
                 case PATH_FOLLOWING:
                 	doPathFollowing();
@@ -275,9 +277,10 @@ public class Drive extends Subsystem {
 
     private Drive() {
         // Start all Talons in open loop mode.
-        mLeftMaster = new WPI_TalonSRX(1);
+        mLeftMaster = new WPI_TalonSRX(RobotMap.DRIVE_LEFT_TALON);
         mLeftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mLeftMaster.setSensorPhase(false);
+        //mLeftMaster.setInverted(true);
         mLeftMaster.changeMotionControlFramePeriod(5);
         
 		mLeftMaster.configNeutralDeadband(0.01, 10);
@@ -306,15 +309,16 @@ public class Drive extends Subsystem {
         }
         */
 
-        _leftSlave1 = new WPI_VictorSPX(11);
+        _leftSlave1 = new WPI_VictorSPX(RobotMap.DRIVE_LEFT_VICTOR_1);
         _leftSlave1.follow(mLeftMaster);
 /*        mLeftSlave.reverseOutput(false);
         mLeftMaster.setStatusFrameRateMs(StatusFrameRate.Feedback, 5);
 */
-        _leftSlave2 = new WPI_VictorSPX(12);
+        _leftSlave2 = new WPI_VictorSPX(RobotMap.DRIVE_LEFT_VICTOR_2);
         _leftSlave2.follow(mLeftMaster);
         
-        mRightMaster = new WPI_TalonSRX(2);
+        mRightMaster = new WPI_TalonSRX(RobotMap.DRIVE_RIGHT_TALON);
+        //mRightMaster.setInverted(true);
         mRightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mRightMaster.changeMotionControlFramePeriod(5);
         
@@ -344,12 +348,12 @@ public class Drive extends Subsystem {
         }
 */
 
-        _rightSlave1 = new WPI_VictorSPX(21);
+        _rightSlave1 = new WPI_VictorSPX(RobotMap.DRIVE_RIGHT_VICTOR_1);
         _rightSlave1.follow(mRightMaster);
 /*        mRightSlave.reverseOutput(false);
         mRightMaster.setStatusFrameRateMs(StatusFrameRate.Feedback, 5);
 */
-        _rightSlave2 = new WPI_VictorSPX(22);
+        _rightSlave2 = new WPI_VictorSPX(RobotMap.DRIVE_RIGHT_VICTOR_2);
         _rightSlave2.follow(mRightMaster);
 
 /*        mLeftMaster.SetVelocityMeasurementPeriod(VelocityMeasurementPeriod.Period_10Ms);
@@ -371,7 +375,7 @@ public class Drive extends Subsystem {
         mCSVWriter = new ReflectingCSVWriter<PathFollower.DebugOutput>("/home/lvuser/PATH-FOLLOWER-LOGS.csv",
                 PathFollower.DebugOutput.class);
         
- //     _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
+        _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
     	_notifier = new Notifier(new PeriodicRunnable());
         _notifier.startPeriodic(0.005);
         
