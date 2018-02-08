@@ -52,7 +52,7 @@ import java.util.Optional;
 public class Drive extends Subsystem {
 
     private static Drive mInstance = null;
-    private DifferentialDrive _drive;
+    //private DifferentialDrive _drive;
 
     public static Drive getInstance() {
     	if(mInstance == null)
@@ -140,7 +140,7 @@ public class Drive extends Subsystem {
             synchronized (Drive.this) {
                 switch (mDriveControlState) {
                 case OPEN_LOOP:
-                	_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
+                	//_drive.arcadeDrive(OI.getInstance().getDrive(), OI.getInstance().getTurn());
                     return;
                 case PATH_FOLLOWING:
                 	doPathFollowing();
@@ -203,13 +203,13 @@ public class Drive extends Subsystem {
     		mRightMaster.setSelectedSensorPosition(0,0,10);
     		TrajectoryPoint point = new TrajectoryPoint();
     		
-    		double vel = 300.0;
+    		double vel = 180.0;
     		for (int i = 0; i < 100; ++i) {
     			if(i > 90){
-    				vel = 300 - (30 * (i-90));
+    				vel = 180.0 - (30 * 2/3 * (i-90));
     			}
     			/* for each point, fill our structure and pass it to API */
-    			point.position = i*.05*4096;
+    			point.position = i*.03*4096;
     			point.velocity = vel * 4096 / 600.0; //Convert RPM to Units/100ms
     			point.headingDeg = 0; /* future feature - not used in this example*/
     			point.profileSlotSelect0 = 0; /* which set of gains would you like to use [0,3]? */
@@ -225,17 +225,17 @@ public class Drive extends Subsystem {
     				point.isLastPoint = true; /* set this to true on the last point  */
     				point.velocity = 0;
     			}
-    			mRightMaster.pushMotionProfileTrajectory(point);
-    			point.position = -1 * point.position;
-    			point.velocity = -1 * point.velocity;
-    			
     			mLeftMaster.pushMotionProfileTrajectory(point);
+    			//point.position = -1 * point.position;
+    			//point.velocity = -1 * point.velocity;
+    			
+    			mRightMaster.pushMotionProfileTrajectory(point);
     		}
     	}
     	mLeftMaster.getMotionProfileStatus(mLeftStatus);
     	mRightMaster.getMotionProfileStatus(mRightStatus);
     	
-    	if((mBufferOk == false) &&  (mLeftStatus.btmBufferCnt < 5 || mRightStatus.btmBufferCnt < 5)){
+    	if((mBufferOk == false) &&  (mLeftStatus.btmBufferCnt < 50 || mRightStatus.btmBufferCnt < 50)){
     		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
     		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Disable.value);
         	if(iCall % 1000 == 0){
@@ -257,7 +257,7 @@ public class Drive extends Subsystem {
     		}else{
         		mLeftMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
             	if(iCall % 10 == 0){
-            		System.out.println("enabled" + "L: " + leftPos + " " + leftEnc);
+            		System.out.println("enabled" + "L: " + leftPos + " " + leftEnc+" "+mLeftMaster.getMotorOutputPercent());
             	}
     		}
     		if(mRightStatus.activePointValid && mRightStatus.isLast){
@@ -268,7 +268,7 @@ public class Drive extends Subsystem {
     		}else{
         		mRightMaster.set(ControlMode.MotionProfile, SetValueMotionProfile.Enable.value);
             	if(iCall % 10 == 0){
-            		System.out.println("enable" + "R: " + rightPos + " " + rightEnc);
+            		System.out.println("enable" + "R: " + rightPos + " " + rightEnc+" "+mRightMaster.getMotorOutputPercent());
             		
             	}
     		}
@@ -279,16 +279,12 @@ public class Drive extends Subsystem {
         // Start all Talons in open loop mode.
         mLeftMaster = new WPI_TalonSRX(RobotMap.DRIVE_LEFT_TALON);
         mLeftMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
-        mLeftMaster.setSensorPhase(false);
+        mLeftMaster.setSensorPhase(true);
         //mLeftMaster.setInverted(true);
         mLeftMaster.changeMotionControlFramePeriod(5);
         
 		mLeftMaster.configNeutralDeadband(0.01, 10);
 
-		mLeftMaster.config_kF(0, 0.0001, 10);
-		mLeftMaster.config_kP(0, 0.25 , 10);
-		mLeftMaster.config_kI(0, 0.0, 10);
-		mLeftMaster.config_kD(0, 20.0, 10);
 
 		/* Our profile uses 10ms timing */
 		mLeftMaster.configMotionProfileTrajectoryPeriod(10, 10); 
@@ -318,17 +314,21 @@ public class Drive extends Subsystem {
         _leftSlave2.follow(mLeftMaster);
         
         mRightMaster = new WPI_TalonSRX(RobotMap.DRIVE_RIGHT_TALON);
-        //mRightMaster.setInverted(true);
+        mRightMaster.setInverted(true);
         mRightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mRightMaster.changeMotionControlFramePeriod(5);
         
 		mRightMaster.configNeutralDeadband(0.01, 10);
 
-		mRightMaster.config_kF(0, 0.0001, 10);
+		mRightMaster.config_kF(0, 0.275, 10);
 		mRightMaster.config_kP(0, 0.25, 10);
 		mRightMaster.config_kI(0, 0.0, 10);
-		mRightMaster.config_kD(0, 20.0, 10);
+		mRightMaster.config_kD(0, 0.0, 10);
 
+		mLeftMaster.config_kF(0, 0.275, 10);
+		mLeftMaster.config_kP(0, 0.25 , 10);
+		mLeftMaster.config_kI(0, 0.0, 10);
+		mLeftMaster.config_kD(0, 0.0, 10);
 		/* Our profile uses 10ms timing */
 		mRightMaster.configMotionProfileTrajectoryPeriod(10, 10); 
 		/*
@@ -350,11 +350,13 @@ public class Drive extends Subsystem {
 
         _rightSlave1 = new WPI_VictorSPX(RobotMap.DRIVE_RIGHT_VICTOR_1);
         _rightSlave1.follow(mRightMaster);
+        //_rightSlave1.setInverted(true);
 /*        mRightSlave.reverseOutput(false);
         mRightMaster.setStatusFrameRateMs(StatusFrameRate.Feedback, 5);
 */
         _rightSlave2 = new WPI_VictorSPX(RobotMap.DRIVE_RIGHT_VICTOR_2);
         _rightSlave2.follow(mRightMaster);
+        //_rightSlave1.setInverted(true);
 
 /*        mLeftMaster.SetVelocityMeasurementPeriod(VelocityMeasurementPeriod.Period_10Ms);
         mLeftMaster.SetVelocityMeasurementWindow(32);
@@ -375,7 +377,7 @@ public class Drive extends Subsystem {
         mCSVWriter = new ReflectingCSVWriter<PathFollower.DebugOutput>("/home/lvuser/PATH-FOLLOWER-LOGS.csv",
                 PathFollower.DebugOutput.class);
         
-        _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
+        //_drive = new DifferentialDrive(mLeftMaster, mRightMaster);
     	_notifier = new Notifier(new PeriodicRunnable());
         _notifier.startPeriodic(0.005);
         
@@ -430,6 +432,8 @@ public class Drive extends Subsystem {
 //        SmartDashboard.putNumber("right voltage (V)", mRightMaster.getOutputVoltage());
         SmartDashboard.putNumber("left speed (ips)", left_speed);
         SmartDashboard.putNumber("right speed (ips)", right_speed);
+        SmartDashboard.putNumber("left percent output", mLeftMaster.getMotorOutputPercent());
+        SmartDashboard.putNumber("right percent output", mRightMaster.getMotorOutputPercent());
         if (usesTalonVelocityControl(mDriveControlState)) {
 //          SmartDashboard.putNumber("left speed error (ips)",
 //                    rpmToInchesPerSecond(mLeftMaster.getSetpoint()) - left_speed);
@@ -448,8 +452,8 @@ public class Drive extends Subsystem {
                 SmartDashboard.putNumber("drive ATE", 0.0);
             }
         }
-        SmartDashboard.putNumber("left position (rotations)", mLeftMaster.getSelectedSensorPosition(0)/4096);
-        SmartDashboard.putNumber("right position (rotations)", mRightMaster.getSelectedSensorPosition(0)/4096);
+        SmartDashboard.putNumber("left position (rotations)", mLeftMaster.getSelectedSensorPosition(0));///4096);
+        SmartDashboard.putNumber("right position (rotations)", mRightMaster.getSelectedSensorPosition(0));///4096);
 //        SmartDashboard.putNumber("gyro vel", getGyroVelocityDegreesPerSec());
         SmartDashboard.putNumber("gyro pos", getGyroAngle().getDegrees());
     }
