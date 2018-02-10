@@ -32,7 +32,10 @@ public class Robot extends TimedRobot {
 
 	 private SubsystemManager mSubsystemManager = null;
 	 private Looper mEnabledLooper = null;
-	 private Drive mDrive = null;
+	 private static Drive mDrive = null;
+	 public static Drive getDrive(){
+		 return mDrive;
+	 }
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
@@ -105,7 +108,7 @@ public class Robot extends TimedRobot {
 	 */
 	@Override
 	public void autonomousPeriodic() {
-		
+		allPeriodic();
 	}
 
 	@Override
@@ -116,7 +119,7 @@ public class Robot extends TimedRobot {
             // Start loopers
             mEnabledLooper.start();
             mDrive.setOpenLoop(DriveSignal.NEUTRAL);
-            mDrive.setBrakeMode(false);
+            //mDrive.setBrakeMode(false);
             // Shift to high
         } catch (Throwable t) {
             CrashTracker.logThrowableCrash(t);
@@ -149,6 +152,7 @@ public class Robot extends TimedRobot {
 	        mSubsystemManager.outputToSmartDashboard();
 	        mSubsystemManager.writeToLog();
 	        mEnabledLooper.outputToSmartDashboard();
+			Scheduler.getInstance().run();
 }
 	}
 	
