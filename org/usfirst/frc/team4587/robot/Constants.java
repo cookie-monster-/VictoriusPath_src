@@ -26,6 +26,7 @@ public class Constants extends ConstantsBase {
     // Parts GE-17203-FLAT and GE-17371 (sheet 7)
     public static double kBoilerTargetTopHeight = 88.0;
     public static double kBoilerRadius = 7.5;
+    public static double kSensorUnitsPerRotation = 4096;
 
     // Shooter tuning parameters
     public static boolean kIsShooterTuning = false;
