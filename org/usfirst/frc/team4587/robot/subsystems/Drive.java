@@ -22,7 +22,9 @@ import org.usfirst.frc.team4587.robot.util.Gyro;
 import org.usfirst.frc.team4587.robot.Constants;
 import org.usfirst.frc.team4587.robot.GeneratedMotionProfile;
 import org.usfirst.frc.team4587.robot.OI;
+import org.usfirst.frc.team4587.robot.Robot;
 import org.usfirst.frc.team4587.robot.RobotMap;
+import org.usfirst.frc.team4587.robot.commands.FollowChezyPath;
 //import com.team254.frc2017.Kinematics;
 //import com.team254.frc2017.RobotState;
 //import com.team254.frc2017.ShooterAimingParameters;
@@ -39,6 +41,7 @@ import org.usfirst.frc.team4587.robot.util.math.RigidTransform2d;
 import org.usfirst.frc.team4587.robot.util.math.Rotation2d;
 import org.usfirst.frc.team4587.robot.util.math.Twist2d;
 
+import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -67,6 +70,13 @@ public class Drive extends Subsystem {
     public enum DriveControlState {
         OPEN_LOOP, // open loop voltage control
         PATH_FOLLOWING, // used for autonomous driving
+    }
+    
+    public int getLeftEnc(){
+    	return mLeftMaster.getSelectedSensorPosition(0);
+    }
+    public int getRightEnc(){
+    	return mRightMaster.getSelectedSensorPosition(0);
     }
 
     /**
@@ -150,9 +160,9 @@ public class Drive extends Subsystem {
                     return;
                 case PATH_FOLLOWING:
                     //mLeftMaster.setInverted(true);
-                    mRightMaster.setInverted(true);
-                    _rightSlave1.setInverted(true);
-                    _rightSlave2.setInverted(true);
+                    //mRightMaster.setInverted(true);
+                    //_rightSlave1.setInverted(true);
+                    //_rightSlave2.setInverted(true);
                     _drive.setSafetyEnabled(false);
                 	doPathFollowing();
                    // if (mPathFollower != null) {
@@ -173,6 +183,24 @@ public class Drive extends Subsystem {
             mCSVWriter.flush();
         }
     };
+    
+    public void setMotorLevels(double left, double right){
+    	System.out.println("left: "+left+" right: "+right);
+    	if(left < -1){
+    		left =-1;
+    	}
+    	if(left > 1){
+    		left = 1;
+    	}
+    	if(right < -1){
+    		right =-1;
+    	}
+    	if(right > 1){
+    		right = 1;
+    	}
+    	mLeftMaster.set(ControlMode.PercentOutput, left);
+    	mRightMaster.set(ControlMode.PercentOutput, right);
+    }
     
     private TrajectoryDuration GetTrajectoryDuration(int durationMs)
 	{	 
@@ -195,9 +223,19 @@ public class Drive extends Subsystem {
 	    }
 	}
 	Notifier _notifier = null;
+	FollowChezyPath c = null;
+	
+	private void doPathFollowing(){
+    	if (mStartingPath) {
+    		mStartingPath = false;
+    		c = new FollowChezyPath("x");
+    		c.initialize();
+    	}
+    	c.execute();
+	}
 	
 
-    private void doPathFollowing () {
+    private void doPathFollowingOld () {
     	if(iCall % 1000 == 0){
     		System.out.println("doPathFollowing " + iCall); 
     	}
@@ -215,7 +253,8 @@ public class Drive extends Subsystem {
     		TrajectoryPoint point = new TrajectoryPoint();
     		
     		double vel = 180.0;
-    		startFilling();
+    		//startFilling();
+    		startFillingTest();
     		/*
     		for (int i = 0; i < 100; ++i) {
     			if(i > 90){
@@ -285,7 +324,12 @@ public class Drive extends Subsystem {
             		
             	}
     		}
+        	//mCSVWriter.write(""+leftPos+","+leftEnc+","+rightPos+","+rightEnc);
+    		int leftVel = mLeftMaster.getActiveTrajectoryVelocity();
+    		int rightVel = mRightMaster.getActiveTrajectoryVelocity();
+    		Robot.writeToFile(leftPos+","+leftEnc+","+leftVel+","+rightPos+","+rightEnc+","+rightVel+"\n");
     	}
+
     }
 
     private Drive() {
@@ -328,7 +372,7 @@ public class Drive extends Subsystem {
         mRightMaster = new WPI_TalonSRX(RobotMap.DRIVE_RIGHT_TALON);
         mRightMaster.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, 10);
         mRightMaster.changeMotionControlFramePeriod(5);
-        mRightMaster.setSensorPhase(true);
+        mRightMaster.setSensorPhase(false);
         
 		mRightMaster.configNeutralDeadband(0.01, 10);
 
@@ -387,6 +431,8 @@ public class Drive extends Subsystem {
 
         mCSVWriter = new ReflectingCSVWriter<PathFollower.DebugOutput>("/home/lvuser/PATH-FOLLOWER-LOGS.csv",
                 PathFollower.DebugOutput.class);
+        
+        		
         
         _drive = new DifferentialDrive(mLeftMaster, mRightMaster);
     	_notifier = new Notifier(new PeriodicRunnable());
@@ -719,6 +765,54 @@ public class Drive extends Subsystem {
 
 			mRightMaster.pushMotionProfileTrajectory(point);
 			mLeftMaster.pushMotionProfileTrajectory(point);
+		}
+	}
+	
+	private void startFillingTest() {
+
+		/* create an empty point */
+		TrajectoryPoint point = new TrajectoryPoint();
+		
+		/* This is fast since it's just into our TOP buffer */
+		for (int i = 0; i < Robot.getTestPath().left.length(); ++i) {
+			double positionRot = Robot.getTestPath().left.get(i).position / (0.5 * Math.PI);
+			double velocityRPM = Robot.getTestPath().left.get(i).velocity / (0.5 * Math.PI) * 60;
+			/* for each point, fill our structure and pass it to API */
+			point.position = positionRot * Constants.kSensorUnitsPerRotation; //Convert Revolutions to Units
+			point.velocity = velocityRPM * Constants.kSensorUnitsPerRotation / 600.0; //Convert RPM to Units/100ms
+			point.headingDeg = 0; /* future feature - not used in this example*/
+			point.profileSlotSelect0 = 0; /* which set of gains would you like to use [0,3]? */
+			point.profileSlotSelect1 = 0; /* future feature  - not used in this example - cascaded PID [0,1], leave zero */
+			point.timeDur = GetTrajectoryDuration((int)Constants.kStepSizeSeconds*1000);
+			point.zeroPos = false;
+			if (i == 0)
+				point.zeroPos = true; /* set this to true on the first point */
+
+			point.isLastPoint = false;
+			if ((i + 1) == Robot.getTestPath().left.length())
+				point.isLastPoint = true; /* set this to true on the last point  */
+
+			mLeftMaster.pushMotionProfileTrajectory(point);
+		}
+		for (int i = 0; i < Robot.getTestPath().right.length(); ++i) {
+			double positionRot = Robot.getTestPath().right.get(i).position / (0.5 * Math.PI);
+			double velocityRPM = Robot.getTestPath().right.get(i).velocity / (0.5 * Math.PI) * 60;
+			/* for each point, fill our structure and pass it to API */
+			point.position = positionRot * Constants.kSensorUnitsPerRotation; //Convert Revolutions to Units
+			point.velocity = velocityRPM * Constants.kSensorUnitsPerRotation / 600.0; //Convert RPM to Units/100ms
+			point.headingDeg = 0; /* future feature - not used in this example*/
+			point.profileSlotSelect0 = 0; /* which set of gains would you like to use [0,3]? */
+			point.profileSlotSelect1 = 0; /* future feature  - not used in this example - cascaded PID [0,1], leave zero */
+			point.timeDur = GetTrajectoryDuration((int)Constants.kStepSizeSeconds*1000);
+			point.zeroPos = false;
+			if (i == 0)
+				point.zeroPos = true; /* set this to true on the first point */
+
+			point.isLastPoint = false;
+			if ((i + 1) == Robot.getTestPath().right.length())
+				point.isLastPoint = true; /* set this to true on the last point  */
+
+			mRightMaster.pushMotionProfileTrajectory(point);
 		}
 	}
 

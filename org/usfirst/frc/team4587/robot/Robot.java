@@ -13,10 +13,14 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import jaci.pathfinder.Pathfinder;
+import jaci.pathfinder.Waypoint;
 
+import java.io.FileWriter;
 import java.util.Arrays;
 
 import org.usfirst.frc.team4587.robot.loops.Looper;
+import org.usfirst.frc.team4587.robot.paths.TestPath;
 import org.usfirst.frc.team4587.robot.subsystems.Drive;
 import org.usfirst.frc.team4587.robot.util.CrashTracker;
 import org.usfirst.frc.team4587.robot.util.DriveSignal;
@@ -36,6 +40,16 @@ public class Robot extends TimedRobot {
 	 public static Drive getDrive(){
 		 return mDrive;
 	 }
+	 private static TestPath mTestPath;
+	 public static TestPath getTestPath(){
+		 return mTestPath;
+	 }
+	 private static FileWriter writer;
+	 public static void writeToFile(String x){
+		 try{
+		 writer.write(x);
+		 }catch(Exception e){}
+	 }
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
@@ -48,14 +62,16 @@ public class Robot extends TimedRobot {
 		mEnabledLooper = new Looper();
 		mSubsystemManager = new SubsystemManager(Arrays.asList(Drive.getInstance()));
 		mDrive = Drive.getInstance();
-			OI.getInstance();
-		       try {
-		            CrashTracker.logRobotInit();
-		            mSubsystemManager.registerEnabledLoops(mEnabledLooper);
-		     } catch (Throwable t) {
-		            CrashTracker.logThrowableCrash(t);
-		            throw t;
-		        }
+		OI.getInstance();
+		try {
+			CrashTracker.logRobotInit();
+		    mSubsystemManager.registerEnabledLoops(mEnabledLooper);
+		} catch (Throwable t) {
+			CrashTracker.logThrowableCrash(t);
+		    throw t;
+		}
+		// 3 Waypoints
+		mTestPath = new TestPath();
 	}
 
 	/**
@@ -79,6 +95,9 @@ public class Robot extends TimedRobot {
 	            CrashTracker.logThrowableCrash(t);
 	            throw t;
 	        }
+	      try{
+	      writer.close();
+	      }catch(Exception e){}
 	}
 
 	@Override
@@ -125,6 +144,9 @@ public class Robot extends TimedRobot {
             CrashTracker.logThrowableCrash(t);
             throw t;
         }
+		try{
+	    writer = new FileWriter("/home/lvuser/PathLog.csv");
+	    }catch(Exception e){}
 	}
 
 	/**
