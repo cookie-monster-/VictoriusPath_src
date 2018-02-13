@@ -7,6 +7,7 @@
 
 package org.usfirst.frc.team4587.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.command.Command;
@@ -103,6 +104,7 @@ public class Robot extends TimedRobot {
 	@Override
 	public void disabledPeriodic() {
         allPeriodic();
+		System.out.println(DriverStation.getInstance().getGameSpecificMessage());
 	}
 
 	/**

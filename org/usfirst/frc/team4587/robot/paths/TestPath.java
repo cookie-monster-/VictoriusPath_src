@@ -16,9 +16,10 @@ public class TestPath {
 	public TestPath(){
 		Waypoint[] points = new Waypoint[] {
 			    //new Waypoint(-4, -1, Pathfinder.d2r(-45)),      // Waypoint @ x=-4, y=-1, exit angle=-45 degrees
-			    new Waypoint(0, 0, 0),
+				new Waypoint(0, 0, 0),
 			    //new Waypoint(3,0,0)
 			    new Waypoint(102.0/12.0, 55.5/12.0, 0),// Waypoint @ x=-2, y=-2, exit angle=0 radians
+			    //new Waypoint(0, 0, Pathfinder.d2r(180)),
 			    //new Waypoint(5, 5, Pathfinder.d2r(90))                           // Waypoint @ x=0, y=0,   exit angle=0 radians
 			};
 		Trajectory.Config config = new Trajectory.Config(Trajectory.FitMethod.HERMITE_CUBIC, Trajectory.Config.SAMPLES_HIGH, Constants.kStepSizeSeconds, 
