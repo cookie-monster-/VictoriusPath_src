@@ -3,25 +3,20 @@ package org.usfirst.frc.team4587.robot.paths;
 import java.io.File;
 import java.io.FileWriter;
 
+
 import org.usfirst.frc.team4587.robot.Constants;
 
 import jaci.pathfinder.Pathfinder;
 import jaci.pathfinder.Trajectory;
+import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.Waypoint;
 import jaci.pathfinder.modifiers.TankModifier;
 
-public class TestPath {
-	public Trajectory left;
-	public Trajectory right;
-	public TestPath(){
-		Waypoint[] points = new Waypoint[] {
-			    //new Waypoint(-4, -1, Pathfinder.d2r(-45)),      // Waypoint @ x=-4, y=-1, exit angle=-45 degrees
-				new Waypoint(0, 0, 0),
-			    new Waypoint(-3,0,0)
-			    //new Waypoint(102.0/12.0, 55.5/12.0, 0),// Waypoint @ x=-2, y=-2, exit angle=0 radians
-			    //new Waypoint(0, 0, Pathfinder.d2r(180)),
-			    //new Waypoint(5, 5, Pathfinder.d2r(90))                           // Waypoint @ x=0, y=0,   exit angle=0 radians
-			};
+public class PathWriter {
+	public static void writePath(String filename, Waypoint[] points, boolean isReversed){
+		Trajectory left;
+		Trajectory right;
+		
 		Trajectory.Config config = new Trajectory.Config(Trajectory.FitMethod.HERMITE_CUBIC, Trajectory.Config.SAMPLES_HIGH, Constants.kStepSizeSeconds, 
 				Constants.kMaxFeetPerSecond, Constants.kMaxAcceleration, Constants.kMaxJerk);
 
@@ -40,9 +35,45 @@ public class TestPath {
 
 		left  = modifier.getLeftTrajectory();       // Get the Left Side
 		right = modifier.getRightTrajectory();      // Get the Right Side
+		
+		if(isReversed){
+			Segment[] leftSegments = new Segment[left.length()];
+			Segment[] rightSegments = new Segment[right.length()];
+			
+			//double dt, double x, double y, double position, double velocity, double acceleration, double jerk, double heading
+			
+			for(int i = 0; i < left.length(); i++){
+				leftSegments[i] = new Segment(
+				right.get(i).dt,
+				right.get(i).x * -1,
+				right.get(i).y * -1,
+				right.get(i).position * -1,
+				right.get(i).velocity * -1,
+				right.get(i).acceleration * -1,
+				right.get(i).jerk * -1,
+				right.get(i).heading
+				);
+			}
+			for(int i = 0; i < right.length(); i++){
+				rightSegments[i] = new Segment(
+				left.get(i).dt,
+				left.get(i).x * -1,
+				left.get(i).y * -1,
+				left.get(i).position * -1,
+				left.get(i).velocity * -1,
+				left.get(i).acceleration * -1,
+				left.get(i).jerk * -1,
+				left.get(i).heading
+				);
+			}
+			left = new Trajectory(leftSegments);
+			right = new Trajectory(rightSegments);
+		}
+		
 		try{
-		FileWriter w = new FileWriter(new File("/home/lvuser/pathLog.csv") );
+		FileWriter w = new FileWriter(new File("/home/lvuser/"+filename+".csv") );
 
+		w.write(left.length()+"\n");
 	    w.write("dt,x,y,pos,vel,acc,jerk,heading\n");
 		for (int i = 0; i < left.length(); i++) {
 		    Trajectory.Segment seg = left.get(i);

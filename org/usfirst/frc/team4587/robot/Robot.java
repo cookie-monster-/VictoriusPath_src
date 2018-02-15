@@ -21,6 +21,8 @@ import java.io.FileWriter;
 import java.util.Arrays;
 
 import org.usfirst.frc.team4587.robot.loops.Looper;
+import org.usfirst.frc.team4587.robot.paths.PathReader;
+import org.usfirst.frc.team4587.robot.paths.PathWriter;
 import org.usfirst.frc.team4587.robot.paths.TestPath;
 import org.usfirst.frc.team4587.robot.subsystems.Drive;
 import org.usfirst.frc.team4587.robot.util.CrashTracker;
@@ -41,8 +43,8 @@ public class Robot extends TimedRobot {
 	 public static Drive getDrive(){
 		 return mDrive;
 	 }
-	 private static TestPath mTestPath;
-	 public static TestPath getTestPath(){
+	 private static PathReader mTestPath;
+	 public static PathReader getTestPath(){
 		 return mTestPath;
 	 }
 	 private static FileWriter writer;
@@ -72,7 +74,17 @@ public class Robot extends TimedRobot {
 		    throw t;
 		}
 		// 3 Waypoints
-		mTestPath = new TestPath();
+		//mTestPath = new TestPath();
+		Waypoint[] points = new Waypoint[] {
+			    //new Waypoint(-4, -1, Pathfinder.d2r(-45)),      // Waypoint @ x=-4, y=-1, exit angle=-45 degrees
+				new Waypoint(0, 0, 0),
+			    //new Waypoint(3,0,0)
+			    new Waypoint(102.0/12.0, 55.5/12.0, 0),// Waypoint @ x=-2, y=-2, exit angle=0 radians
+			    //new Waypoint(0, 0, Pathfinder.d2r(180)),
+			    //new Waypoint(5, 5, Pathfinder.d2r(90))                           // Waypoint @ x=0, y=0,   exit angle=0 radians
+			};
+		PathWriter.writePath("test", points, true/*isReversed*/);
+		mTestPath = new PathReader("test");
 	}
 
 	/**
@@ -104,7 +116,6 @@ public class Robot extends TimedRobot {
 	@Override
 	public void disabledPeriodic() {
         allPeriodic();
-		System.out.println(DriverStation.getInstance().getGameSpecificMessage());
 	}
 
 	/**

@@ -80,6 +80,7 @@ public class FollowChezyPath extends Command {
 
     // Called repeatedly when this Command is scheduled to run
     public void execute() {
+    	System.out.println("FollowChezyPath.execute()");
     	double time = System.nanoTime();
     	double dt = (time - m_startTime) / 1000000;
     	int step0 = (int)(dt / 10);
